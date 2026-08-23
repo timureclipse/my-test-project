@@ -394,26 +394,26 @@
               <label for="prompt">Prompt / Input</label>
               <textarea id="prompt" placeholder="Наприклад: Поясни простими словами, що таке REST API..."></textarea>
               <div class="hint">
-                Для навчальної версії використовується приблизна оцінка токенів, а не офіційний tokenizer.
+                Input tokens рахуються tokenizer-ом OpenAI через tiktoken (o200k_base).
               </div>
             </div>
 
-            <div class="field">
+            <div class="field full">
               <label for="outputTokens">Очікувані output tokens</label>
-              <input id="outputTokens" type="number" min="0" step="1" value="1000" />
-              <div class="hint">Скільки токенів приблизно згенерує модель.</div>
+              <input id="outputTokens" type="number" min="0" max="128000" step="1" value="1000" />
+              <div class="hint">Максимум: 128 000 output tokens.</div>
             </div>
 
-            <div class="field">
-              <label for="charsPerToken">Символів на 1 token</label>
-              <input id="charsPerToken" type="number" min="1" max="10" step="0.1" value="4" />
-              <div class="hint">Спрощення для ДЗ. Значення 4 = 1 token ≈ 4 символи.</div>
-            </div>
           </div>
 
           <div class="price-line">
             <span>Тариф вибраної моделі</span>
             <strong id="priceDescription">—</strong>
+          </div>
+
+          <div class="price-line">
+            <span>Tokenizer input</span>
+            <strong id="tokenizerStatus">OpenAI tiktoken · o200k_base</strong>
           </div>
         </div>
       </div>
@@ -502,19 +502,23 @@
         </div>
 
         <div class="notice">
-          <b>Важливо:</b> це навчальний калькулятор. Реальна токенізація залежить від моделі,
-          мови, системного prompt, tool calls, reasoning/thinking tokens, cache, Batch/Flex/Priority
-          режиму та інших параметрів. Ціни в коді — Standard API rates, перевірені 23.08.2026;
+          <b>Важливо:</b> input tokens рахуються через OpenAI tiktoken з encoding
+          <code>o200k_base</code>. Для OpenAI це значно точніше за оцінку символами.
+          Для Gemini та Claude це все одно орієнтовне порівняння, оскільки вони мають власні tokenizer-и.
+          Реальна вартість також може залежати від system prompt, tool calls, reasoning/thinking tokens,
+          cache, Batch/Flex/Priority режиму та інших параметрів. Ціни в коді — Standard API rates, перевірені 23.08.2026;
           перед практичним використанням звіряй їх з офіційними сторінками.
           Для Gemini 3.1 Pro Preview у цій демонстрації використано тариф для prompt ≤ 200K tokens.
         </div>
       </div>
     </section>
 
-    <div class="footer">HTML + CSS + JavaScript в одному файлі • API keys не потрібні</div>
+    <div class="footer">HTML + CSS + JavaScript в одному файлі • OpenAI tiktoken • API keys не потрібні</div>
   </main>
 
-<script>
+<script type="module">
+  import { getEncoding } from "https://cdn.jsdelivr.net/npm/js-tiktoken@1.0.21/+esm";
+
   // Standard API prices in USD per 1M tokens.
   // Educational demo. Always verify current prices on official pricing pages.
   const PRICING = {
@@ -555,7 +559,6 @@
   const modelEl = $("model");
   const promptEl = $("prompt");
   const outputTokensEl = $("outputTokens");
-  const charsPerTokenEl = $("charsPerToken");
 
   function formatNumber(value) {
     return new Intl.NumberFormat("uk-UA").format(value);
@@ -569,14 +572,43 @@
     return "$" + value.toFixed(4);
   }
 
+  let tokenizer = null;
+
+  try {
+    tokenizer = getEncoding("o200k_base");
+  } catch (error) {
+    console.error("Не вдалося завантажити OpenAI tokenizer:", error);
+  }
+
   function estimateInputTokens() {
     const text = promptEl.value || "";
-    const charsPerToken = Math.max(1, Number(charsPerTokenEl.value) || 4);
-    return text.length === 0 ? 0 : Math.max(1, Math.ceil(text.length / charsPerToken));
+    if (!text) return 0;
+
+    if (tokenizer) {
+      try {
+        const status = document.getElementById("tokenizerStatus");
+        if (status) status.textContent = "OpenAI tiktoken · o200k_base";
+        return tokenizer.encode(text).length;
+      } catch (error) {
+        console.error("Помилка tokenization:", error);
+      }
+    }
+
+    // Fallback only if the tokenizer CDN is unavailable.
+    const status = document.getElementById("tokenizerStatus");
+    if (status) status.textContent = "Tokenizer недоступний · fallback";
+    return Math.max(1, Math.ceil(text.length / 4));
   }
 
   function getOutputTokens() {
-    return Math.max(0, Math.floor(Number(outputTokensEl.value) || 0));
+    let value = Math.floor(Number(outputTokensEl.value) || 0);
+    value = Math.max(0, Math.min(128000, value));
+
+    if (Number(outputTokensEl.value) !== value) {
+      outputTokensEl.value = value;
+    }
+
+    return value;
   }
 
   function populateProviders() {
@@ -674,8 +706,12 @@
   providerEl.addEventListener("change", populateModels);
   modelEl.addEventListener("change", calculate);
   promptEl.addEventListener("input", calculate);
-  outputTokensEl.addEventListener("input", calculate);
-  charsPerTokenEl.addEventListener("input", calculate);
+  outputTokensEl.addEventListener("input", () => {
+    const raw = Number(outputTokensEl.value);
+    if (raw > 128000) outputTokensEl.value = 128000;
+    if (raw < 0) outputTokensEl.value = 0;
+    calculate();
+  });
 
   populateProviders();
   populateModels();
