@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI API Cost Calculator</title>
+  <style>
+    :root {
+      --bg: #07111f;
+      --panel: #0d1a2b;
+      --panel-2: #101f33;
+      --border: rgba(255,255,255,.10);
+      --text: #f5f7fb;
+      --muted: #9cb0c8;
+      --accent: #6ee7b7;
+      --accent-2: #60a5fa;
+      --danger: #fda4af;
+      --shadow: 0 18px 60px rgba(0,0,0,.28);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(96,165,250,.14), transparent 28rem),
+        radial-gradient(circle at 90% 10%, rgba(110,231,183,.12), transparent 26rem),
+        var(--bg);
+      color: var(--text);
+    }
+
+    a { color: inherit; }
+
+    .wrap {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 42px 0 64px;
+    }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: flex-start;
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(255,255,255,.035);
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(34px, 5vw, 58px);
+      line-height: 1;
+      letter-spacing: -0.045em;
+    }
+
+    .lead {
+      margin: 15px 0 0;
+      max-width: 760px;
+      color: var(--muted);
+      line-height: 1.65;
+      font-size: 16px;
+    }
+
+    .badge {
+      white-space: nowrap;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(110,231,183,.25);
+      background: rgba(110,231,183,.08);
+      color: #b9f7dd;
+      font-size: 13px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.3fr .7fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.018));
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .card-header h2 {
+      margin: 0;
+      font-size: 17px;
+      letter-spacing: -.015em;
+    }
+
+    .card-body { padding: 20px; }
+
+    .fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .field.full { grid-column: 1 / -1; }
+
+    label {
+      display: block;
+      color: #d6e1ef;
+      font-size: 13px;
+      margin: 0 0 7px;
+      font-weight: 650;
+    }
+
+    select, input, textarea {
+      width: 100%;
+      color: var(--text);
+      background: #081423;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 12px;
+      padding: 12px 13px;
+      outline: none;
+      font: inherit;
+      transition: .18s ease;
+    }
+
+    select:focus, input:focus, textarea:focus {
+      border-color: rgba(96,165,250,.75);
+      box-shadow: 0 0 0 3px rgba(96,165,250,.10);
+    }
+
+    textarea {
+      min-height: 215px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    .hint {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .mini-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: end;
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 11px;
+      padding: 12px 14px;
+      cursor: pointer;
+      font-weight: 750;
+      background: linear-gradient(135deg, var(--accent-2), var(--accent));
+      color: #07111f;
+      transition: transform .14s ease, filter .14s ease;
+    }
+
+    button:hover { transform: translateY(-1px); filter: brightness(1.04); }
+    button.secondary {
+      background: rgba(255,255,255,.06);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .price-line {
+      margin-top: 14px;
+      padding: 13px 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(255,255,255,.025);
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .price-line strong { color: var(--text); }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .metric {
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.025);
+      border-radius: 14px;
+      padding: 15px;
+    }
+
+    .metric .name {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 7px;
+    }
+
+    .metric .value {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -.03em;
+    }
+
+    .total {
+      margin-top: 12px;
+      padding: 18px;
+      border: 1px solid rgba(110,231,183,.28);
+      border-radius: 15px;
+      background: linear-gradient(135deg, rgba(110,231,183,.11), rgba(96,165,250,.08));
+    }
+
+    .total .name { color: #bcd4cb; font-size: 13px; }
+    .total .value {
+      margin-top: 5px;
+      font-size: 34px;
+      font-weight: 900;
+      letter-spacing: -.045em;
+      color: #d4ffee;
+    }
+
+    .formula {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 12px;
+      background: #081423;
+      border: 1px solid var(--border);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      color: #b9c8da;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+
+    .section {
+      margin-top: 20px;
+    }
+
+    .compare-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+
+    th, td {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      font-size: 13px;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 650;
+      background: rgba(255,255,255,.02);
+      position: sticky;
+      top: 0;
+    }
+
+    td strong { color: #eaf3ff; }
+    .cheapest {
+      color: #b8f8dc;
+      font-weight: 800;
+    }
+
+    .provider-pill {
+      display: inline-block;
+      font-size: 11px;
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted);
+    }
+
+    .links {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .link-card {
+      display: block;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.025);
+      border-radius: 13px;
+      padding: 14px;
+      transition: .16s ease;
+    }
+
+    .link-card:hover {
+      border-color: rgba(96,165,250,.5);
+      transform: translateY(-1px);
+    }
+
+    .link-card b {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .link-card span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .notice {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .footer {
+      margin-top: 22px;
+      color: #71869f;
+      text-align: center;
+      font-size: 12px;
+    }
+
+    @media (max-width: 850px) {
+      .grid { grid-template-columns: 1fr; }
+      .hero { flex-direction: column; }
+      .fields, .links { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+      .badge { white-space: normal; }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">⚡ Навчальний калькулятор API</div>
+        <h1>AI API Cost Calculator</h1>
+        <p class="lead">
+          Встав prompt, обери модель і вкажи очікувану довжину відповіді.
+          Сторінка приблизно оцінить кількість токенів та вартість одного запиту.
+        </p>
+      </div>
+      <div class="badge">Ціни: USD / 1M tokens</div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <div class="card-header">
+          <h2>Параметри запиту</h2>
+          <button class="secondary" id="exampleBtn" type="button">Вставити приклад</button>
+        </div>
+
+        <div class="card-body">
+          <div class="fields">
+            <div class="field">
+              <label for="provider">Провайдер</label>
+              <select id="provider"></select>
+            </div>
+
+            <div class="field">
+              <label for="model">Модель</label>
+              <select id="model"></select>
+            </div>
+
+            <div class="field full">
+              <label for="prompt">Prompt / Input</label>
+              <textarea id="prompt" placeholder="Наприклад: Поясни простими словами, що таке REST API..."></textarea>
+              <div class="hint">
+                Для навчальної версії використовується приблизна оцінка токенів, а не офіційний tokenizer.
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="outputTokens">Очікувані output tokens</label>
+              <input id="outputTokens" type="number" min="0" step="1" value="1000" />
+              <div class="hint">Скільки токенів приблизно згенерує модель.</div>
+            </div>
+
+            <div class="field">
+              <label for="charsPerToken">Символів на 1 token</label>
+              <input id="charsPerToken" type="number" min="1" max="10" step="0.1" value="4" />
+              <div class="hint">Спрощення для ДЗ. Значення 4 = 1 token ≈ 4 символи.</div>
+            </div>
+          </div>
+
+          <div class="price-line">
+            <span>Тариф вибраної моделі</span>
+            <strong id="priceDescription">—</strong>
+          </div>
+        </div>
+      </div>
+
+      <aside class="card">
+        <div class="card-header">
+          <h2>Estimated usage</h2>
+          <span class="provider-pill" id="selectedProvider">—</span>
+        </div>
+
+        <div class="card-body">
+          <div class="result-grid">
+            <div class="metric">
+              <div class="name">Input tokens</div>
+              <div class="value" id="inputTokens">0</div>
+            </div>
+            <div class="metric">
+              <div class="name">Output tokens</div>
+              <div class="value" id="outputTokensResult">1,000</div>
+            </div>
+            <div class="metric">
+              <div class="name">Input cost</div>
+              <div class="value" id="inputCost">$0</div>
+            </div>
+            <div class="metric">
+              <div class="name">Output cost</div>
+              <div class="value" id="outputCost">$0</div>
+            </div>
+          </div>
+
+          <div class="total">
+            <div class="name">Total estimated cost</div>
+            <div class="value" id="totalCost">$0.000000</div>
+          </div>
+
+          <div class="formula">
+            Input = inputTokens / 1,000,000 × inputPrice<br>
+            Output = outputTokens / 1,000,000 × outputPrice<br>
+            Total = Input + Output
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="card section">
+      <div class="card-header">
+        <h2>Порівняння моделей</h2>
+        <span class="provider-pill">той самий prompt + output</span>
+      </div>
+      <div class="compare-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Провайдер</th>
+              <th>Модель</th>
+              <th>Input $/1M</th>
+              <th>Output $/1M</th>
+              <th>Input tokens</th>
+              <th>Output tokens</th>
+              <th>Estimated cost</th>
+            </tr>
+          </thead>
+          <tbody id="compareBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card section">
+      <div class="card-header">
+        <h2>Офіційні сторінки</h2>
+      </div>
+      <div class="card-body">
+        <div class="links">
+          <a class="link-card" href="https://developers.openai.com/api/docs/pricing" target="_blank" rel="noopener">
+            <b>OpenAI Pricing ↗</b>
+            <span>developers.openai.com</span>
+          </a>
+          <a class="link-card" href="https://ai.google.dev/gemini-api/docs/pricing" target="_blank" rel="noopener">
+            <b>Gemini Pricing ↗</b>
+            <span>ai.google.dev</span>
+          </a>
+          <a class="link-card" href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noopener">
+            <b>Claude Pricing ↗</b>
+            <span>platform.claude.com</span>
+          </a>
+        </div>
+
+        <div class="notice">
+          <b>Важливо:</b> це навчальний калькулятор. Реальна токенізація залежить від моделі,
+          мови, системного prompt, tool calls, reasoning/thinking tokens, cache, Batch/Flex/Priority
+          режиму та інших параметрів. Ціни в коді — Standard API rates, перевірені 23.08.2026;
+          перед практичним використанням звіряй їх з офіційними сторінками.
+          Для Gemini 3.1 Pro Preview у цій демонстрації використано тариф для prompt ≤ 200K tokens.
+        </div>
+      </div>
+    </section>
+
+    <div class="footer">HTML + CSS + JavaScript в одному файлі • API keys не потрібні</div>
+  </main>
+
+<script>
+  // Standard API prices in USD per 1M tokens.
+  // Educational demo. Always verify current prices on official pricing pages.
+  const PRICING = {
+    "OpenAI": [
+      { name: "GPT-5.6 Sol", id: "gpt-5.6-sol", input: 5.00, output: 30.00 },
+      { name: "GPT-5.6 Terra", id: "gpt-5.6-terra", input: 2.50, output: 15.00 },
+      { name: "GPT-5.6 Luna", id: "gpt-5.6-luna", input: 1.00, output: 6.00 },
+      { name: "GPT-5.5", id: "gpt-5.5", input: 5.00, output: 30.00 },
+      { name: "GPT-5.5 Pro", id: "gpt-5.5-pro", input: 30.00, output: 180.00 },
+      { name: "GPT-5.4", id: "gpt-5.4", input: 2.50, output: 15.00 },
+      { name: "GPT-5.4 Mini", id: "gpt-5.4-mini", input: 0.75, output: 4.50 },
+      { name: "GPT-5.4 Nano", id: "gpt-5.4-nano", input: 0.20, output: 1.25 }
+    ],
+
+    "Google Gemini": [
+      { name: "Gemini 3.6 Flash", id: "gemini-3.6-flash", input: 0.75, output: 3.75 },
+      { name: "Gemini 3.5 Flash", id: "gemini-3.5-flash", input: 1.50, output: 9.00 },
+      { name: "Gemini 3.5 Flash-Lite", id: "gemini-3.5-flash-lite", input: 0.30, output: 2.50 },
+      { name: "Gemini 3.1 Flash-Lite", id: "gemini-3.1-flash-lite", input: 0.25, output: 1.50 },
+      { name: "Gemini 3.1 Pro Preview (≤200K)", id: "gemini-3.1-pro-preview", input: 2.00, output: 12.00 },
+      { name: "Gemini 3 Flash Preview", id: "gemini-3-flash-preview", input: 0.50, output: 3.00 }
+    ],
+
+    "Anthropic Claude": [
+      { name: "Claude Opus 4.8", id: "claude-opus-4.8", input: 5.00, output: 25.00 },
+      { name: "Claude Opus 4.7", id: "claude-opus-4.7", input: 5.00, output: 25.00 },
+      { name: "Claude Opus 4.6", id: "claude-opus-4.6", input: 5.00, output: 25.00 },
+      { name: "Claude Sonnet 4.6", id: "claude-sonnet-4.6", input: 3.00, output: 15.00 },
+      { name: "Claude Opus 4.5", id: "claude-opus-4.5", input: 5.00, output: 25.00 },
+      { name: "Claude Sonnet 4.5", id: "claude-sonnet-4.5", input: 3.00, output: 15.00 },
+      { name: "Claude Haiku 4.5", id: "claude-haiku-4.5", input: 1.00, output: 5.00 }
+    ]
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  const providerEl = $("provider");
+  const modelEl = $("model");
+  const promptEl = $("prompt");
+  const outputTokensEl = $("outputTokens");
+  const charsPerTokenEl = $("charsPerToken");
+
+  function formatNumber(value) {
+    return new Intl.NumberFormat("uk-UA").format(value);
+  }
+
+  function formatMoney(value) {
+    if (value === 0) return "$0.000000";
+    if (value < 0.000001) return "$" + value.toExponential(4);
+    if (value < 0.01) return "$" + value.toFixed(6);
+    if (value < 1) return "$" + value.toFixed(5);
+    return "$" + value.toFixed(4);
+  }
+
+  function estimateInputTokens() {
+    const text = promptEl.value || "";
+    const charsPerToken = Math.max(1, Number(charsPerTokenEl.value) || 4);
+    return text.length === 0 ? 0 : Math.max(1, Math.ceil(text.length / charsPerToken));
+  }
+
+  function getOutputTokens() {
+    return Math.max(0, Math.floor(Number(outputTokensEl.value) || 0));
+  }
+
+  function populateProviders() {
+    providerEl.innerHTML = "";
+    Object.keys(PRICING).forEach((provider) => {
+      const option = document.createElement("option");
+      option.value = provider;
+      option.textContent = provider;
+      providerEl.appendChild(option);
+    });
+  }
+
+  function populateModels() {
+    const provider = providerEl.value;
+    modelEl.innerHTML = "";
+
+    PRICING[provider].forEach((model, index) => {
+      const option = document.createElement("option");
+      option.value = String(index);
+      option.textContent = model.name;
+      modelEl.appendChild(option);
+    });
+
+    calculate();
+  }
+
+  function getSelectedModel() {
+    return PRICING[providerEl.value][Number(modelEl.value || 0)];
+  }
+
+  function calculate() {
+    const model = getSelectedModel();
+    if (!model) return;
+
+    const inputTokens = estimateInputTokens();
+    const outputTokens = getOutputTokens();
+
+    const inputCost = inputTokens / 1_000_000 * model.input;
+    const outputCost = outputTokens / 1_000_000 * model.output;
+    const total = inputCost + outputCost;
+
+    $("inputTokens").textContent = formatNumber(inputTokens);
+    $("outputTokensResult").textContent = formatNumber(outputTokens);
+    $("inputCost").textContent = formatMoney(inputCost);
+    $("outputCost").textContent = formatMoney(outputCost);
+    $("totalCost").textContent = formatMoney(total);
+    $("selectedProvider").textContent = providerEl.value;
+    $("priceDescription").textContent =
+      `$${model.input}/1M input • $${model.output}/1M output`;
+
+    renderComparison(inputTokens, outputTokens);
+  }
+
+  function renderComparison(inputTokens, outputTokens) {
+    const rows = [];
+
+    for (const [provider, models] of Object.entries(PRICING)) {
+      for (const model of models) {
+        const cost =
+          inputTokens / 1_000_000 * model.input +
+          outputTokens / 1_000_000 * model.output;
+
+        rows.push({ provider, model, cost });
+      }
+    }
+
+    rows.sort((a, b) => a.cost - b.cost);
+    const minCost = rows.length ? rows[0].cost : 0;
+
+    $("compareBody").innerHTML = rows.map((row) => {
+      const isCheapest = Math.abs(row.cost - minCost) < 1e-15;
+      return `
+        <tr>
+          <td><span class="provider-pill">${row.provider}</span></td>
+          <td><strong>${row.model.name}</strong></td>
+          <td>$${row.model.input}</td>
+          <td>$${row.model.output}</td>
+          <td>${formatNumber(inputTokens)}</td>
+          <td>${formatNumber(outputTokens)}</td>
+          <td class="${isCheapest ? "cheapest" : ""}">
+            ${formatMoney(row.cost)}${isCheapest ? " ★" : ""}
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  $("exampleBtn").addEventListener("click", () => {
+    promptEl.value =
+      "Ти викладач програмування. Поясни учню, що таке REST API, наведи простий приклад HTTP GET-запиту та коротко поясни різницю між GET і POST.";
+    outputTokensEl.value = 700;
+    calculate();
+  });
+
+  providerEl.addEventListener("change", populateModels);
+  modelEl.addEventListener("change", calculate);
+  promptEl.addEventListener("input", calculate);
+  outputTokensEl.addEventListener("input", calculate);
+  charsPerTokenEl.addEventListener("input", calculate);
+
+  populateProviders();
+  populateModels();
+</script>
+</body>
+</html>
